@@ -62,7 +62,6 @@ func (p *MotChillUk) GetLink(link string) (interface{}, error) {
 		Media:   mediaLink,
 	}
 
-	fmt.Printf("data: %v", data)
 	return data, nil
 }
 

@@ -88,21 +88,23 @@ function handle_bootstrap_link_request()
     $link_url = isset($_POST['link_url']) ? esc_url($_POST['link_url']) : '';
 
     $res = getLink($link_url);
-
+    $titles = explode('|', $res['name']);
+    //split title |
+    $subtitle = $titles[1];
+    $title = $titles[0];
     // Echo the unordered list of media links
     ?>
-    <ul class="list-group" id="liveLinkList">
-        <?php
-        foreach ($res['media'] as $index => $mediaLink) {
-            // Use JavaScript to check if the link is live
-            ?>
-            <li class="list-group-item" id="mediaLinkItem_<?php echo $index; ?>">
-                <a href="<?php echo esc_url($mediaLink); ?>" target="_blank">View Link</a>
-            </li>
-            <?php
-        }
-        ?>
-    </ul>
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title"><?php echo esc_html($title); ?></h4>
+            <h6 class="card-subtitle mb-2 text-muted"><?php echo esc_html($subtitle); ?></h6>
+
+            <?php foreach ($res['media'] as $index => $mediaLink) : ?>
+                <!-- Use JavaScript to check if the link is live -->
+                <a class="card-link" href="<?php echo esc_url($mediaLink); ?>" target="_blank">View Link</a>
+            <?php endforeach; ?>
+        </div>
+    </div>
     <?php
 
     wp_die(); // This is required to terminate immediately and return a proper response
