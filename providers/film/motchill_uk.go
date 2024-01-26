@@ -50,8 +50,13 @@ func (p *MotChillUk) GetLink(link string) (interface{}, error) {
 		return nil, err
 	}
 	fmt.Printf("media link: %v", mediaLink)
-
+	titles := p.getTitle(body)
+	filmName := ""
+	if titles != nil {
+		filmName = strings.Join(titles, "|")
+	}
 	data := Model{
+		Name:    filmName,
 		Link:    link,
 		Episode: session,
 		Media:   mediaLink,
@@ -59,6 +64,28 @@ func (p *MotChillUk) GetLink(link string) (interface{}, error) {
 
 	fmt.Printf("data: %v", data)
 	return data, nil
+}
+
+func (p *MotChillUk) getTitle(body string) []string {
+	regex := regexp.MustCompile(`<h1 class="title" itemprop="name">([^<]+)<\/h1>`)
+	title := regex.FindAllStringSubmatch(body, -1)
+	if len(title) == 0 {
+		return nil
+	}
+
+	regex = regexp.MustCompile(`<h2 class="title2">([^<]+)<\/h2>`)
+	title2 := regex.FindAllStringSubmatch(body, -1)
+	if len(title2) == 0 {
+		return nil
+	}
+
+	title = append(title, title2...)
+
+	titles := make([]string, 0)
+	for _, v := range title {
+		titles = append(titles, v[1])
+	}
+	return titles
 }
 
 func (p *MotChillUk) getSessionInBody(body, pathUrlDetect string) *map[string]string {

@@ -2,8 +2,8 @@
 /*
 Plugin Name: Bootstrap Link Plugin
 Description: Adds a form with Bootstrap styling to submit a link.
-Version: 1.0
-Author: Your Name
+Version: 2.3
+Author: Quan Nguyen
 */
 
 // Enqueue scripts and styles
@@ -11,12 +11,11 @@ function bootstrap_link_enqueue_scripts()
 {
     wp_enqueue_style('bootstrap-css', 'https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css');
     wp_enqueue_script('jquery');
-    wp_enqueue_script('bootstrap-link-script', plugins_url('js/bootstrap-link-script.js', __FILE__), array('jquery'), null, true);
+    wp_enqueue_script('bootstrap-link-script', plugins_url('js/bootstrap-script-v2.js', __FILE__), array('jquery'), null, true);
 
     // Pass AJAX parameters to script.js
     wp_localize_script('bootstrap-link-script', 'ajax_object', array(
-        'ajax_url' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('bootstrap_link_nonce') // Create nonce for security
+        'ajax_url' => admin_url('admin-ajax.php')
     ));
 }
 
@@ -27,7 +26,7 @@ add_action('wp_enqueue_scripts', 'bootstrap_link_enqueue_scripts');
 function getLink($url)
 {
     // API endpoint
-    $api_url = 'http://docker.for.mac.host.internal:8080/api/view?url=' . urlencode($url);
+    $api_url = 'https://noads-api.quanna.dev/api/view?url=' . urlencode($url);
 
     // Make the API request
     $response = wp_remote_get($api_url);
@@ -65,7 +64,8 @@ function bootstrap_link_form_shortcode()
                     <div class="form-group">
                         <label for="link_url">Enter your link URL:</label>
                         <input type="url" class="form-control" name="link_url" id="link_url"
-                               placeholder="https://example.com" required>
+                               placeholder="https://motchill.uk/xem-phim/cua-hang-sat-thu/tap-1-138757" required>
+                        <?php wp_nonce_field('get_link_nonce', 'get_link_nonce'); ?>
                     </div>
                     <button type="submit" class="btn btn-primary">Get Link</button>
                 </form>
@@ -83,7 +83,7 @@ add_shortcode('bootstrap_link_form', 'bootstrap_link_form_shortcode');
 // AJAX callback function
 function handle_bootstrap_link_request()
 {
-    check_ajax_referer('bootstrap_link_nonce', 'nonce');
+    //check_ajax_referer('bootstrap_link_nonce', 'nonce');
 
     $link_url = isset($_POST['link_url']) ? esc_url($_POST['link_url']) : '';
 
