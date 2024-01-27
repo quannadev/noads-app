@@ -2,7 +2,7 @@
 /*
 Plugin Name: Bootstrap Link Plugin
 Description: Adds a form with Bootstrap styling to submit a link.
-Version: 2.3
+Version: 3.8
 Author: Quan Nguyen
 */
 
@@ -11,7 +11,7 @@ function bootstrap_link_enqueue_scripts()
 {
     wp_enqueue_style('bootstrap-css', 'https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css');
     wp_enqueue_script('jquery');
-    wp_enqueue_script('bootstrap-link-script', plugins_url('js/bootstrap-script-v2.js', __FILE__), array('jquery'), null, true);
+    wp_enqueue_script('bootstrap-link-script', plugins_url('js/bootstrap-script-v3-8.js', __FILE__), array('jquery'), null, true);
 
     // Pass AJAX parameters to script.js
     wp_localize_script('bootstrap-link-script', 'ajax_object', array(
@@ -25,11 +25,22 @@ add_action('wp_enqueue_scripts', 'bootstrap_link_enqueue_scripts');
 
 function getLink($url)
 {
+    //trim space url
+    $url = trim($url);
+    $docker_endpoint = 'http://host.docker.internal:8080';
+    //get env api endpoint
+    if (getenv('API_ENDPOINT')) {
+        $docker_endpoint = getenv('API_ENDPOINT');
+    }
     // API endpoint
-    $api_url = 'https://noads-api.quanna.dev/api/view?url=' . urlencode($url);
+    $api_url = $docker_endpoint . '/api/view?url=' .$url;
 
     // Make the API request
-    $response = wp_remote_get($api_url);
+    $args = array(
+        'timeout'     => 20,
+        'sslverify' => false
+    );
+    $response = wp_remote_get($api_url, $args);
 
     // Check for errors
     if (is_wp_error($response)) {
@@ -56,24 +67,27 @@ function bootstrap_link_form_shortcode()
 {
     ob_start(); // Start output buffering
     ?>
-
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
+   <div class="col">
+	    <div class="row justify-content-center">
+            <div class="col-md-12">
                 <form id="bootstrap-link-form" action="#" method="post">
                     <div class="form-group">
-                        <label for="link_url">Enter your link URL:</label>
-                        <input type="url" class="form-control" name="link_url" id="link_url"
-                               placeholder="https://motchill.uk/xem-phim/cua-hang-sat-thu/tap-1-138757" required>
+                        <label for="link_url">Keyword or url:</label>
+                        <input type="text" class="form-control" name="link_url" id="link_url" placeholder="Link or text search" required>
                         <?php wp_nonce_field('get_link_nonce', 'get_link_nonce'); ?>
                     </div>
-                    <button type="submit" class="btn btn-primary">Get Link</button>
+                    <button type="submit" class="btn btn-primary">Search</button>
                 </form>
+            </div>
+        </div>
+    </div>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-12">
                 <div id="link-result" class="mt-3"></div>
             </div>
         </div>
     </div>
-
     <?php
     return ob_get_clean(); // Return buffered content
 }
@@ -83,28 +97,114 @@ add_shortcode('bootstrap_link_form', 'bootstrap_link_form_shortcode');
 // AJAX callback function
 function handle_bootstrap_link_request()
 {
-    //check_ajax_referer('bootstrap_link_nonce', 'nonce');
-
     $link_url = isset($_POST['link_url']) ? esc_url($_POST['link_url']) : '';
 
     $res = getLink($link_url);
+
     $titles = explode('|', $res['name']);
-    //split title |
     $subtitle = $titles[1];
     $title = $titles[0];
+    $episodes = $res['episodes'];
+    $medias = $res['media'];
+    $thumbnail = $res['thumbnail'];
+
+    //filter m3u8 in medias filter
+    $m3u8 = "";
+    foreach ($medias as $media) {
+        if (strpos($media, 'm3u8') !== false) {
+            $m3u8 = esc_url($media);
+            //remove m3u8 from medias
+            $medias = array_diff($medias, array($media));
+            break;
+        }
+        if (strpos($media, 'mp4') !== false) {
+            $m3u8 = esc_url($media);
+            //remove m3u8 from medias
+            $medias = array_diff($medias, array($media));
+            break;
+        }
+    }
+    // Create the unordered list of media links
+	$content = "";
+    if ($m3u8 != "") {
+        $video_player = '[bradmax_video url="' .$m3u8 . '" autoplay="true"]';
+        $content = do_shortcode($video_player);
+    }
+
+    //check link_url contains youtube
+    if (strpos($link_url, 'youtube') !== false) {
+        //open youtube link new tab
+        $content = '';
+         $medias[] = $m3u8;
+    }
+    $thumbnail = '<img src="' . $thumbnail . '" class="card-img-top" alt="'.$title.'">';
     // Echo the unordered list of media links
     ?>
-    <div class="card">
+    <div class="col">
+		<div class="card">
+		<?php if ($content != "") : ?>
+            <div class="card-img-top">
+                <?php echo $content; ?>
+            </div>
+        <?php else : ?>
+        <?php if ($thumbnail != "") : ?>
+            <?php echo $thumbnail; ?>
+        <?php endif; ?>
+
         <div class="card-body">
             <h4 class="card-title"><?php echo esc_html($title); ?></h4>
             <h6 class="card-subtitle mb-2 text-muted"><?php echo esc_html($subtitle); ?></h6>
-
-            <?php foreach ($res['media'] as $index => $mediaLink) : ?>
-                <!-- Use JavaScript to check if the link is live -->
-                <a class="card-link" href="<?php echo esc_url($mediaLink); ?>" target="_blank">View Link</a>
+            <?php foreach ($medias as $index => $mediaLink) : ?>
+               <a href="<?php echo esc_url($mediaLink); ?>" target="_blank" class="view-link card-link" data-media-link="<?php echo esc_url($mediaLink); ?>">
+                    View Link <?php echo esc_html($index + 1); ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+        <div class="card-footer">
+            <?php foreach ($episodes as $index => $es) : ?>
+               <li>
+                    <a href="#" class="episode-link card-link" data-es-link="<?php echo esc_url($episodes[$index]); ?>">
+                       <?php echo esc_html($index); ?>
+                   </a>
+                </li>
             <?php endforeach; ?>
         </div>
     </div>
+    </div>
+    <script>
+    jQuery(document).ready(function ($) {
+        $('.view-link').on('click', function(event) {
+            event.preventDefault();
+            const mediaLink = $(this).data('media-link');
+            window.open(mediaLink, '_blank');
+        });
+        $('.episode-link').on('click', function(event) {
+            event.preventDefault();
+            const esLink = $(this).data('es-link');
+            getLink(esLink);
+        });
+        function getLink(esLink) {
+            const resultContainer = $('#link-result');
+            resultContainer.html(''); // Clear any existing content in the result container
+            $.ajax({
+                type: 'POST',
+                url: ajax_object.ajax_url,
+                data: {
+                    action: 'handle_bootstrap_link_request',
+                    link_url: esLink,
+                    nonce: $('#get_link_nonce').val()
+                },
+                success: function(response) {
+                    console.log("success");
+                    resultContainer.html(response);
+                },
+                error: function(errorThrown) {
+                    console.log(errorThrown);
+                }
+            });
+        }
+    });
+    </script>
     <?php
 
     wp_die(); // This is required to terminate immediately and return a proper response

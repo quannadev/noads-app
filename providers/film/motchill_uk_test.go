@@ -1,6 +1,9 @@
 package film
 
-import "testing"
+import (
+	"noads/providers/models"
+	"testing"
+)
 
 func TestCheckLink(t *testing.T) {
 	motChillUk := NewMotChillUk()
@@ -30,9 +33,19 @@ func TestGetName(t *testing.T) {
 	if data == nil {
 		t.Error("data is nil")
 	}
-	name := data.(Model).Name
+	name := data.(models.Model).Name
 	if name == "" {
 		t.Error("name is empty")
 	}
 	t.Log(name)
+}
+
+func TestGetLinkEmbed(t *testing.T) {
+	motChillUk := NewMotChillUk()
+	data, err := motChillUk.GetFilmInfo("CỬA HÀNG SÁT THỦ")
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Logf("link embed: %s", data)
 }

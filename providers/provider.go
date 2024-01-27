@@ -1,6 +1,9 @@
 package providers
 
-import "noads/providers/film"
+import (
+	"noads/providers/film"
+	"noads/providers/youtube"
+)
 
 type IProvider interface {
 	CheckLink(link string) bool
@@ -14,6 +17,8 @@ type Provider struct {
 func NewProvider() *Provider {
 	providers := []IProvider{
 		film.NewMotChillUk(),
+		youtube.NewYoutube(),
+		//film.NewOPhim(),
 	}
 	return &Provider{
 		providers: providers,

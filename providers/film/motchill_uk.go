@@ -3,6 +3,7 @@ package film
 import (
 	"fmt"
 	"noads/client"
+	"noads/providers/models"
 	"regexp"
 	"strings"
 )
@@ -20,30 +21,66 @@ func NewMotChillUk() *MotChillUk {
 func (p *MotChillUk) CheckLink(link string) bool {
 	urlParse, err := p.ParseUrl(link)
 	if err != nil {
-		return false
+		info, err := p.GetFilmInfo(link)
+		if err != nil {
+			return false
+		}
+		if info == "" {
+			return false
+		}
+		return true
 	}
 	return strings.EqualFold(urlParse.Host, "motchill.uk")
+}
+
+// GetFilmInfo GetVideoInfo
+func (p *MotChillUk) GetFilmInfo(link string) (string, error) {
+	slug := p.GetSlugTitle(link)
+	if slug == "" {
+		return "", fmt.Errorf("not found slug")
+	}
+	endpoint := fmt.Sprintf("https://motchill.uk/phim/%s", slug)
+	body, err := p.Get(endpoint, nil)
+	if err != nil {
+		return "", err
+	}
+	pattern := fmt.Sprintf(`https:\/\/motchill\.uk\/xem-phim\/%s\/[^"]+`, slug)
+	regex := regexp.MustCompile(pattern)
+	linkFilm := regex.FindAllStringSubmatch(body, -1)
+	if len(linkFilm) == 0 {
+		return "", fmt.Errorf("not found link film")
+	}
+	links := p.RemoveDuplicates(linkFilm[0])
+	if len(links) == 0 {
+		return "", fmt.Errorf("not found link film")
+	}
+	return links[0], nil
 }
 
 func (p *MotChillUk) GetLink(link string) (interface{}, error) {
 	urlParse, err := p.ParseUrl(link)
 	if err != nil {
-		return nil, err
+		info, err := p.GetFilmInfo(link)
+		if err != nil {
+			return nil, err
+		}
+		urlParse, _ = p.ParseUrl(info)
 	}
 	pathOfFilm := strings.Split(urlParse.Path, "/")
 	if len(pathOfFilm) < 2 {
 		return nil, fmt.Errorf("path of film is invalid")
 	}
-	pathFilm := pathOfFilm[2]
-	body, err := p.Get(link, nil)
+	slug := pathOfFilm[2]
+	body, err := p.Get(urlParse.String(), nil)
 	if err != nil {
+		fmt.Printf("err: %v\n", err)
 		return nil, err
 	}
-	session := p.getSessionInBody(body, pathFilm)
+	session := p.getSessionInBody(body, slug)
 	if session == nil {
+		fmt.Printf("not found session\n")
 		return nil, fmt.Errorf("not found session")
 	}
-	fmt.Printf("session: %v", session)
 
 	mediaLink, err := p.GetMediaLink(body)
 	if err != nil {
@@ -55,7 +92,7 @@ func (p *MotChillUk) GetLink(link string) (interface{}, error) {
 	if titles != nil {
 		filmName = strings.Join(titles, "|")
 	}
-	data := Model{
+	data := models.Model{
 		Name:    filmName,
 		Link:    link,
 		Episode: session,
