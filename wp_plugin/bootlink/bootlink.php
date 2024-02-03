@@ -2,7 +2,7 @@
 /*
 Plugin Name: Bootstrap Link Plugin
 Description: Adds a form with Bootstrap styling to submit a link.
-Version: 3.8
+Version: 4.0
 Author: Quan Nguyen
 */
 
@@ -21,13 +21,12 @@ function bootstrap_link_enqueue_scripts()
 
 add_action('wp_enqueue_scripts', 'bootstrap_link_enqueue_scripts');
 
-//Getlink Function
-
-function getLink($url)
+//Get link Function
+function GetLink($url)
 {
     //trim space url
     $url = trim($url);
-    $docker_endpoint = 'http://host.docker.internal:8080';
+    $docker_endpoint = 'https://noads-api.quanna.dev';
     //get env api endpoint
     if (getenv('API_ENDPOINT')) {
         $docker_endpoint = getenv('API_ENDPOINT');
@@ -37,8 +36,7 @@ function getLink($url)
 
     // Make the API request
     $args = array(
-        'timeout'     => 20,
-        'sslverify' => false
+        'timeout'     => 20
     );
     $response = wp_remote_get($api_url, $args);
 
@@ -99,7 +97,7 @@ function handle_bootstrap_link_request()
 {
     $link_url = isset($_POST['link_url']) ? esc_url($_POST['link_url']) : '';
 
-    $res = getLink($link_url);
+    $res = GetLink($link_url);
 
     $titles = explode('|', $res['name']);
     $subtitle = $titles[1];
@@ -130,11 +128,17 @@ function handle_bootstrap_link_request()
         $video_player = '[bradmax_video url="' .$m3u8 . '" autoplay="true"]';
         $content = do_shortcode($video_player);
     }
+    if($content != "")
+    {
+       $content = '<div class="card-img-top">' . $content . '</div>';
+    }elseif($thumbnail != ""){
+        $content = '<img src="' . $thumbnail . '" class="card-img-top" alt="'.$title.'">';
+    }
+
 
     //check link_url contains youtube
     if (strpos($link_url, 'youtube') !== false) {
-        //open youtube link new tab
-        $content = '';
+         $content = '';
          $medias[] = $m3u8;
     }
     $thumbnail = '<img src="' . $thumbnail . '" class="card-img-top" alt="'.$title.'">';
@@ -142,13 +146,8 @@ function handle_bootstrap_link_request()
     ?>
     <div class="col">
 		<div class="card">
-		<?php if ($content != "") : ?>
-            <div class="card-img-top">
-                <?php echo $content; ?>
-            </div>
-        <?php else : ?>
-        <?php if ($thumbnail != "") : ?>
-            <?php echo $thumbnail; ?>
+		<?php if ($content !== ""): ?>
+             <?= $content; ?>
         <?php endif; ?>
 
         <div class="card-body">
@@ -181,6 +180,12 @@ function handle_bootstrap_link_request()
         $('.episode-link').on('click', function(event) {
             event.preventDefault();
             const esLink = $(this).data('es-link');
+            //check is m3u8
+            if (esLink.indexOf('.m3u8') !== -1) {
+                window.open(esLink, '_blank');
+                return;
+            }
+
             getLink(esLink);
         });
         function getLink(esLink) {

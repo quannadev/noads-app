@@ -18,10 +18,10 @@ services:
       - WORDPRESS_DATABASE_NAME=wordpress
       - WORDPRESS_DATABASE_USER=wordpress
       - WORDPRESS_DATABASE_PASSWORD=wordpress
-      - WORDPRESS_USERNAME=quanna
-      - WORDPRESS_PASSWORD=anhquan123
+      - WORDPRESS_USERNAME=admin
+      - WORDPRESS_PASSWORD=admin123
       - WORDPRESS_EMAIL=me@quanna.dev
-      - API_ENDPOINT=http://host.docker.internal:8080 #http://noads-api.quanna.dev
+      - API_ENDPOINT=http://host.docker.internal:8080
     ports:
       - "8084:8080"
     volumes:
