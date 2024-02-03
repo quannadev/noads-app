@@ -7,6 +7,10 @@ Xem phim, youtube không bị quảng cáo.
 
 ### Backend 
 
+```bash
+go run main.go
+```
+
 - Run Backend search engine
 ```bash
 docker compose up -d
